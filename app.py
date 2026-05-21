@@ -2,62 +2,61 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import time
 
-# 1. Page Configuration
-st.set_page_config(page_title="MLB Live Radar", layout="wide", page_icon="⚾")
-st.title("🔥 Live Betting Radar")
+st.set_page_config(page_title="MLB Command Center", layout="wide", page_icon="⚾")
+st.title("⚡ Live Situational Command Center")
 
-# 2. Connection Setup
-# Paste your exact Google Sheets share link right here:
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1g8Y8iPLCw2NZDH9t27bbFAYDvnlCL7RlbNqIDa1RV9o/edit?usp=sharing"
-
-# Establish the connection using Streamlit's built-in tool
+# Connection Setup
+SHEET_URL = "https://docs.google.com/spreadsheets/d/YOUR_UNIQUE_ID/edit?usp=sharing"
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# 3. Create the UI Placeholder
 dashboard_placeholder = st.empty()
 
-# 4. The Live Dashboard Loop
 while True:
     try:
-        # Read the data from the sheet.
-        # ttl=0 is CRITICAL: It tells Streamlit to never cache the data, always fetch the live numbers.
-        live_data = conn.read(spreadsheet=SHEET_URL, ttl=0)
-
-        # Clean up any blank rows Google Sheets might have added
-        live_data = live_data.dropna(how="all")
-
-        if not live_data.empty:
-            # Render the UI inside the placeholder
-            with dashboard_placeholder.container():
-                st.subheader("🚨 Latest Live Edge Detected")
-
-                # Display metrics cleanly across the top
-                col1, col2, col3 = st.columns(3)
-
-                with col1:
-                    matchup = f"{live_data['away_team'].iloc[0]} @ {live_data['home_team'].iloc[0]}"
-                    st.metric(label="Matchup", value=matchup)
-
-                with col2:
-                    home_prob = float(live_data['level3_home_win_prob'].iloc[0])
-                    st.metric(label="Home Win Prob", value=f"{home_prob * 100:.1f}%")
-
-                with col3:
-                    away_prob = float(live_data['level3_away_win_prob'].iloc[0])
-                    st.metric(label="Away Win Prob", value=f"{away_prob * 100:.1f}%")
-
-                st.markdown("---")
-
-                # Show the raw dataframe
-                st.dataframe(live_data, use_container_width=True, hide_index=True)
-
-        else:
-            with dashboard_placeholder.container():
-                st.info("📡 Radar is online and scanning. Waiting for the first pitching change...")
-
-    except Exception as e:
+        # Pull the multi-game table matrix
+        live_data = conn.read(spreadsheet=SHEET_URL, ttl=0).dropna(how="all")
+        
         with dashboard_placeholder.container():
-            st.warning("⚠️ Waiting for data to populate from the Colab engine...")
-
-    # Sleep for 30 seconds to match your Colab engine's cycle
-    time.sleep(30)
+            if not live_data.empty:
+                # Loop through every active row in the Google Sheet and render independently
+                for index, game in live_data.iterrows():
+                    match_title = f"🏟️ {game['away_team']} @ {game['home_team']}"
+                    
+                    with st.expander(f"{match_title}  |  📊 Live Probability: Home {float(game['home_win_prob'])*100:.1f}%", expanded=True):
+                        # 1. Main Scoreboard Row
+                        c1, c2, c3, c4 = st.columns(4)
+                        with c1:
+                            st.metric(label="Current Score", value=f"{game['away_team']} {int(game['away_score'])} - {int(game['home_score'])} {game['home_team']}")
+                        with c2:
+                            st.metric(label="Game Frame", value=f"{game['half_inning']} of {int(game['inning'])}")
+                        with c3:
+                            st.metric(label="Outs", value="🔴" * int(game['outs']) if int(game['outs']) > 0 else "0 Outs")
+                        with c4:
+                            # Base Runners UI Visualizer
+                            b1 = "❶" if int(game['runner_1b']) == 1 else "○"
+                            b2 = "❷" if int(game['runner_2b']) == 1 else "○"
+                            b3 = "❸" if int(game['runner_3b']) == 1 else "○"
+                            st.metric(label="Base paths Matrix", value=f"{b3}   {b2}   {b1}")
+                            
+                        st.markdown(" ")
+                        
+                        # 2. Live Personnel Matchup & Ratings Row
+                        col_p1, col_p2, col_p3 = st.columns(3)
+                        with col_p1:
+                            st.markdown(f"**⚾ Active Pitcher:** {game['pitcher_name']}")
+                            st.caption(f"FanGraphs Prior K-Metric Baseline: `{game['pitcher_rating']}`")
+                        with col_p2:
+                            st.markdown(f"**⚔️ At-Bat Franchise:** {game['batting_team']}")
+                            st.caption(f"Team Recent Offense Form Tracker: `{game['batter_rating']}`")
+                        with col_p3:
+                            # Clear predictive target metric outputs
+                            st.progress(float(game['home_win_prob']), text=f"**Home Team Win Equity: {float(game['home_win_prob'])*100:.1f}%**")
+                        
+                        st.markdown("---")
+            else:
+                st.info("📡 Command center online. Waiting for game-state changes to populate stream...")
+                
+    except Exception as e:
+        st.warning("📡 Waiting for active game state frames to populate...")
+        
+    time.sleep(15)
