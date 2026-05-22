@@ -16,7 +16,11 @@ while True:
         live_data = conn.read(spreadsheet=SHEET_URL, ttl=0).dropna(how="all")
         
         with dashboard_placeholder.container():
-            if not live_data.empty:
+            # Check if data exists AND contains our deep situational columns
+            required_columns = ['balls', 'strikes', 'last_play_desc', 'pitcher_name', 'home_win_prob']
+            has_all_columns = all(col in live_data.columns for col in required_columns) if not live_data.empty else False
+            
+            if not live_data.empty and has_all_columns:
                 for index, game in live_data.iterrows():
                     match_title = f"🏟️ {game['away_team']} @ {game['home_team']}"
                     home_p = float(game['home_win_prob'])
@@ -55,10 +59,10 @@ while True:
                         
                         st.markdown("---")
             else:
-                st.info("📡 Command center online. Waiting for game-state changes to populate stream...")
+                st.info("📡 Command center online. Waiting for game-state change frames from Colab to sync...")
                 
     except Exception as e:
         with dashboard_placeholder.container():
-            st.warning(f"📡 Syncing deep personnel columns with active stream... Error: {e}")
+            st.warning(f"📡 Syncing deep personnel columns with active stream... Status info: {e}")
         
     time.sleep(12)
