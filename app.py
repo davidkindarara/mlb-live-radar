@@ -6,7 +6,7 @@ st.set_page_config(page_title="MLB Deep Command Center", layout="wide", page_ico
 st.title("⚡ Live Situational Command Center")
 
 # Connection Setup
-SHEET_URL = "https://docs.google.com/spreadsheets/d/YOUR_UNIQUE_ID/edit?usp=sharing"
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1g8Y8iPLCw2NZDH9t27bbFAYDvnlCL7RlbNqIDa1RV9o/edit?usp=sharing"
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 dashboard_placeholder = st.empty()
